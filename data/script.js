@@ -1,7 +1,7 @@
 function DoorClose() 
 {
     var xhttp = new XMLHttpRequest();
-    xhttp.open("GET", "close", true);
+    xhttp.open("GET", "close", true); 
     xhttp.send();
 }
 
@@ -13,19 +13,22 @@ function DoorOpen()
 }
 
 
-
-
-setInterval(function getData()
+function getData()
 {
-    var xhttp.onreadystatechange = function()
-    
+    var xhttp = new XMLHttpRequest();
+
+    xhttp.onreadystatechange = function()
     {
         if(this.readyState == 4 && this.status == 200)
         {
-            document.getElementsbyId("valeurtemperatureIN").innerHTML = this.responseText;
+            document.getElementById("doorInterval").innerHTML = this.responseText;
         }
     };
 
-    xhttp.open("GET", "tempIN", true);
-    whttp.send();
-}, 6000);
+    xhttp.open("GET", "ReaddoorInterval", true);
+    xhttp.send();
+}
+
+window.onload = function() {
+    getData();
+};
