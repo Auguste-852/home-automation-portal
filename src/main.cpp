@@ -127,16 +127,18 @@ server.on("/jquery-3.6.3.min.js", HTTP_GET, [](AsyncWebServerRequest *request)
   request->send(LittleFS, "/jquery-3.6.3.min.js", "text/javascript");            // Demande au serveur d'envoyer script.js
   });
 
-server.on("/open", HTTP_GET, [](AsyncWebServerRequest *request)
-  {
-  OpenDoor()                     //appelle fonction ouverture porte
-  request->send(204);            // Demande au serveur ouvre la porte
+  server.on("/open", HTTP_GET, [](AsyncWebServerRequest *request) {
+    const char command = 'O';  // 'O' pour Open (Ouvrir)
+    radio.stopListening();
+    radio.write(&command, sizeof(command)); // Envoi de la commande 'O' à l'autre ESP
+    request->send(204); 
   });
 
-server.on("/close", HTTP_GET, [](AsyncWebServerRequest *request)
-  {
-  CloseDoor()                     //appelle fonction fermeture porte
-  request->send(204);            // Demande au serveur ouvre la porte
+  server.on("/close", HTTP_GET, [](AsyncWebServerRequest *request) {
+    const char command = 'C';  // 'C' pour Close (Fermer)
+    radio.stopListening();
+    radio.write(&command, sizeof(command)); // Envoi de la commande 'C' à l'autre ESP
+    request->send(204);
   });
 
 server.on("/ReaddoorInterval", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -145,34 +147,33 @@ server.on("/ReaddoorInterval", HTTP_GET, [](AsyncWebServerRequest *request)
   request->send(200, "text/plain", etatPorte);            // Demande au serveur ouvre la porte
   });
 
-server.on("/AmountFood", HTTP_POST, [](AsyncWebServerRequest *request) {
-    if (request->hasParam("AmountFood", true)) {
+  server.on("/AmountFood", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("valueAmountFood", true)) {
       String message = request->getParam("valueAmountFood", true)->value();
       amountFood = message.toInt();
       
-      distributeFood(amountFood);
+      radio.stopListening();
+      radio.write(&amountFood, sizeof(amountFood)); // Envoi de la commande avec quantité de nourriture à l'autre ESP
       
-      request->send(204); // Répondre à la requête avec un code 204 No Content
+      request->send(204);
     } else {
       request->send(400);
     }
-  });  
+  });
   
 server.on("/updateSettings", HTTP_POST, [](AsyncWebServerRequest *request) {
-  if(request->hasParam("doorInterval", true) && 
-       request->hasParam("feedInterval", true) && 
-       request->hasParam("foodQuantity", true)) {
+    if(request->hasParam("doorInterval", true) && 
+         request->hasParam("feedInterval", true) && 
+         request->hasParam("foodQuantity", true)) {
       
-      String doorIntervalParam = request->getParam("doorInterval", true)->value();
-      String feedIntervalParam = request->getParam("feedInterval", true)->value();
-      String foodQuantityParam = request->getParam("foodQuantity", true)->value();
-      
-      // Convertir les valeurs en types appropriés et les utiliser
-      doorInterval = doorIntervalParam.toInt();
-      feedInterval = feedIntervalParam.toInt();
-      foodQuantity = foodQuantityParam.toInt();
-      
-      // Répondre à la requête
+      Settings settings;
+      settings.doorInterval = request->getParam("doorInterval", true)->value().toInt();
+      settings.feedInterval = request->getParam("feedInterval", true)->value().toInt();
+      settings.foodQuantity = request->getParam("foodQuantity", true)->value().toInt();
+
+      radio.stopListening();
+      radio.write(&settings, sizeof(settings)); // Envoi des paramètres via RF24
+
       request->send(204);
     } else {
       request->send(400);
