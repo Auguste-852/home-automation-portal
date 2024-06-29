@@ -24,13 +24,29 @@ RF24 radio(pinCE, pinCSN);    // Instanciation du NRF24L01
 #define tunnel2 "PIPE2" 
 const byte adresses[][6] = {tunnel1, tunnel2};    // Tableau des adresses de tunnel, au format "byte array"
 
+
+bool porteOuverte = true;
+int amountFood = 0;
+int doorInterval = 60;
+int feedInterval = 6;
+int foodQuantity = 1;
+
 #define SSID_AP        "MyPortal_conf"    // Nom du réseau wifi sur le quel se connecter pour configurer la connexion Wifi à un routeur via WifiManager
 #define SSID_MDP_AP    "Portal1234"       // Mot de passe du réseau wifi de configuration. Peut être laissé vide
+
+
 
 
 AsyncWebServer server(80);
 DNSServer dns;
 
+//------------------------------------------------------------------------------------------------------------------------------
+void distributeFood(int quantite) {
+  // Ajoutez votre logique de distribution de nourriture ici
+  Serial.print("Distribution de ");
+  Serial.print(quantite);
+  Serial.println(" portions de nourriture.");
+}
 
 void setup() {
   Serial.begin(115200);
@@ -48,7 +64,6 @@ void setup() {
   Serial.println(radio.isChipConnected() ? "YES" : "NO !!!");
 
 
-  
 //---------------------------------------------------------------------------------------------------------------------------wifi 
   WiFi.hostname("Portail");
   AsyncWiFiManager wm(&server,&dns);
@@ -112,6 +127,57 @@ server.on("/jquery-3.6.3.min.js", HTTP_GET, [](AsyncWebServerRequest *request)
   request->send(LittleFS, "/jquery-3.6.3.min.js", "text/javascript");            // Demande au serveur d'envoyer script.js
   });
 
+server.on("/open", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+  OpenDoor()                     //appelle fonction ouverture porte
+  request->send(204);            // Demande au serveur ouvre la porte
+  });
+
+server.on("/close", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+  CloseDoor()                     //appelle fonction fermeture porte
+  request->send(204);            // Demande au serveur ouvre la porte
+  });
+
+server.on("/ReaddoorInterval", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+  String etatPorte = (porteOuverte) ? "open" : "close";            //lit bool porte ouverte et convertie en string
+  request->send(200, "text/plain", etatPorte);            // Demande au serveur ouvre la porte
+  });
+
+server.on("/AmountFood", HTTP_POST, [](AsyncWebServerRequest *request) {
+    if (request->hasParam("AmountFood", true)) {
+      String message = request->getParam("valueAmountFood", true)->value();
+      amountFood = message.toInt();
+      
+      distributeFood(amountFood);
+      
+      request->send(204); // Répondre à la requête avec un code 204 No Content
+    } else {
+      request->send(400);
+    }
+  });  
+  
+server.on("/updateSettings", HTTP_POST, [](AsyncWebServerRequest *request) {
+  if(request->hasParam("doorInterval", true) && 
+       request->hasParam("feedInterval", true) && 
+       request->hasParam("foodQuantity", true)) {
+      
+      String doorIntervalParam = request->getParam("doorInterval", true)->value();
+      String feedIntervalParam = request->getParam("feedInterval", true)->value();
+      String foodQuantityParam = request->getParam("foodQuantity", true)->value();
+      
+      // Convertir les valeurs en types appropriés et les utiliser
+      doorInterval = doorIntervalParam.toInt();
+      feedInterval = feedIntervalParam.toInt();
+      foodQuantity = foodQuantityParam.toInt();
+      
+      // Répondre à la requête
+      request->send(204);
+    } else {
+      request->send(400);
+    }
+  });
 
 server.begin();
 
