@@ -25,28 +25,21 @@ RF24 radio(pinCE, pinCSN);    // Instanciation du NRF24L01
 const byte adresses[][6] = {tunnel1, tunnel2};    // Tableau des adresses de tunnel, au format "byte array"
 
 
-bool porteOuverte = true;
-int amountFood = 0;
-int doorInterval = 60;
-int feedInterval = 6;
-int foodQuantity = 1;
-
 #define SSID_AP        "MyPortal_conf"    // Nom du réseau wifi sur le quel se connecter pour configurer la connexion Wifi à un routeur via WifiManager
 #define SSID_MDP_AP    "Portal1234"       // Mot de passe du réseau wifi de configuration. Peut être laissé vide
-
 
 
 
 AsyncWebServer server(80);
 DNSServer dns;
 
-//------------------------------------------------------------------------------------------------------------------------------
-void distributeFood(int quantite) {
-  // Ajoutez votre logique de distribution de nourriture ici
-  Serial.print("Distribution de ");
-  Serial.print(quantite);
-  Serial.println(" portions de nourriture.");
-}
+bool porteOuverte = true;
+
+struct Settings {
+  int doorInterval;
+  int feedInterval;
+  int foodQuantity;
+};
 
 void setup() {
   Serial.begin(115200);
