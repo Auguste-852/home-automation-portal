@@ -44,6 +44,7 @@ struct Settings {
   uint8_t doorInterval;
   uint8_t feedInterval;
   uint8_t foodQuantity;
+  uint16_t photoresistorThreshold;
 };
 
 
@@ -152,29 +153,19 @@ server.on("/ReaddoorInterval", HTTP_GET, [](AsyncWebServerRequest *request)
   request->send(200, "text/plain", etatPorte);            // Demande au serveur ouvre la porte
   });
 
-server.on("/AmountFood", HTTP_POST, [](AsyncWebServerRequest *request) {
-  if (request->hasParam("valueAmountFood", true)) {
-    String message = request->getParam("valueAmountFood", true)->value();
-    amountFood = message.toInt();
-      
-    radio.stopListening();
-    radio.write(&amountFood, sizeof(amountFood)); // Envoi de la commande avec quantité de nourriture à l'autre ESP
-      
-    request->send(204);
-  } else {
-    request->send(400);
-  }
-});
   
 server.on("/updateSettings", HTTP_POST, [](AsyncWebServerRequest *request) {
     if(request->hasParam("doorInterval", true) && 
          request->hasParam("feedInterval", true) && 
-         request->hasParam("foodQuantity", true)) {
+         request->hasParam("foodQuantity", true) &&
+         request->hasParam("photoresistorThreshold", true)) {
       
       Settings settings;
       settings.doorInterval = request->getParam("doorInterval", true)->value().toInt();
       settings.feedInterval = request->getParam("feedInterval", true)->value().toInt();
       settings.foodQuantity = request->getParam("foodQuantity", true)->value().toInt();
+      settings.photoresistorThreshold = request->getParam("photoresistorThreshold", true)->value().toInt();
+
 
       radio.stopListening();
       radio.write(&settings, sizeof(settings)); // Envoi des paramètres via RF24

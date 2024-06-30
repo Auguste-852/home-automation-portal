@@ -26,35 +26,33 @@ function DoorOpen()
     xhttp.send();
 }
 
-$(document).ready(function(){
-    $("#appliquer").click(function(){
-        event.preventDefault(); // Empêcher le comportement par défaut du bouton (soumission de formulaire)
-        
-        var valeur = $("#AmountFood").val();
-        $.post("AmountFood",{
-            valueAmountFood: value
-        });
-    });
-});
-
-$(document).ready(function(){
-    $("#apply2").click(function(event){
-        
+$(document).ready(function() {
+    $("#apply2").click(function(event) {
         event.preventDefault(); // Empêcher le comportement par défaut du bouton (soumission de formulaire)
 
         // Récupérer les valeurs des champs du formulaire
         var doorInterval = $("#doorInterval").val();
         var feedInterval = $("#feedInterval").val();
         var foodQuantity = $("#foodQuantity").val();
+        var photoresistorThreshold = $("#photoresistorThreshold").val();
 
         // Envoyer les valeurs au serveur via une requête POST
         $.post("updateSettings", {
             doorInterval: doorInterval,
             feedInterval: feedInterval,
-            foodQuantity: foodQuantity
+            foodQuantity: foodQuantity,
+            photoresistorThreshold: photoresistorThreshold
+        }).done(function() {
+            $("#input_error2").text("Settings updated successfully!").css("color", "green");
+        }).fail(function() {
+            $("#input_error2").text("Error updating settings!").css("color", "red");
         });
     });
 });
+
+function updateThresholdValue(value) {
+    $("#thresholdValue").text(value);
+}
 
 function getData()
 {
