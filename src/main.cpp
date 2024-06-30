@@ -1,3 +1,5 @@
+#define SERIAL_PRINTF Serial.printf
+
 #include <Arduino.h> 
 
 #include <SPI.h>
@@ -7,11 +9,10 @@
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 
-#include <LittleFS.h>
+#include <LittleFS.h> 
 
 #include <ESPAsyncWiFiManager.h>   // Permet de configurer le Wifi via un portail d'accès  https://github.com/tzapu/WiFiManager
 #include <NTPClient.h>             // Client NTP pour récupérer l'heure d'internet
-
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
@@ -34,12 +35,17 @@ AsyncWebServer server(80);
 DNSServer dns;
 
 bool porteOuverte = true;
+uint8_t amountFood = 0;
+uint8_t doorInterval = 60;
+uint8_t feedInterval = 6;
+uint8_t foodQuantity = 1;
 
 struct Settings {
-  int doorInterval;
-  int feedInterval;
-  int foodQuantity;
+  uint8_t doorInterval;
+  uint8_t feedInterval;
+  uint8_t foodQuantity;
 };
+
 
 void setup() {
   Serial.begin(115200);
@@ -102,13 +108,10 @@ server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
   request->send(LittleFS, "/index.html", String(), false);  // Envoie index.html
   });
 
-
 server.on("/w3.css", HTTP_GET, [](AsyncWebServerRequest *request)
   {
   request->send(LittleFS, "/w3.css", "text/css");                      // Demande au serveur d'envoyer w3.css
   });
-
-
 
 server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request)
   {
@@ -120,19 +123,28 @@ server.on("/jquery-3.6.3.min.js", HTTP_GET, [](AsyncWebServerRequest *request)
   request->send(LittleFS, "/jquery-3.6.3.min.js", "text/javascript");            // Demande au serveur d'envoyer script.js
   });
 
-  server.on("/open", HTTP_GET, [](AsyncWebServerRequest *request) {
-    const char command = 'O';  // 'O' pour Open (Ouvrir)
-    radio.stopListening();
-    radio.write(&command, sizeof(command)); // Envoi de la commande 'O' à l'autre ESP
-    request->send(204); 
-  });
 
-  server.on("/close", HTTP_GET, [](AsyncWebServerRequest *request) {
-    const char command = 'C';  // 'C' pour Close (Fermer)
-    radio.stopListening();
-    radio.write(&command, sizeof(command)); // Envoi de la commande 'C' à l'autre ESP
-    request->send(204);
-  });
+server.on("/time", HTTP_GET, [](AsyncWebServerRequest *request) {
+    timeClient.update();
+    String formattedTime = timeClient.getFormattedTime();
+    // Extract hours and minutes
+    String hoursMinutes = formattedTime.substring(0, 5); // HH:MM
+    request->send(200, "text/plain", hoursMinutes);
+});
+
+server.on("/open", HTTP_GET, [](AsyncWebServerRequest *request) {
+  const char command = 'O';  // 'O' pour Open (Ouvrir)
+  radio.stopListening();
+  radio.write(&command, sizeof(command)); // Envoi de la commande 'O' à l'autre ESP
+  request->send(204); 
+});
+
+server.on("/close", HTTP_GET, [](AsyncWebServerRequest *request) {
+  const char command = 'C';  // 'C' pour Close (Fermer)
+  radio.stopListening();
+  radio.write(&command, sizeof(command)); // Envoi de la commande 'C' à l'autre ESP
+  request->send(204);
+});
 
 server.on("/ReaddoorInterval", HTTP_GET, [](AsyncWebServerRequest *request)
   {
@@ -140,19 +152,19 @@ server.on("/ReaddoorInterval", HTTP_GET, [](AsyncWebServerRequest *request)
   request->send(200, "text/plain", etatPorte);            // Demande au serveur ouvre la porte
   });
 
-  server.on("/AmountFood", HTTP_POST, [](AsyncWebServerRequest *request) {
-    if (request->hasParam("valueAmountFood", true)) {
-      String message = request->getParam("valueAmountFood", true)->value();
-      amountFood = message.toInt();
+server.on("/AmountFood", HTTP_POST, [](AsyncWebServerRequest *request) {
+  if (request->hasParam("valueAmountFood", true)) {
+    String message = request->getParam("valueAmountFood", true)->value();
+    amountFood = message.toInt();
       
-      radio.stopListening();
-      radio.write(&amountFood, sizeof(amountFood)); // Envoi de la commande avec quantité de nourriture à l'autre ESP
+    radio.stopListening();
+    radio.write(&amountFood, sizeof(amountFood)); // Envoi de la commande avec quantité de nourriture à l'autre ESP
       
-      request->send(204);
-    } else {
-      request->send(400);
-    }
-  });
+    request->send(204);
+  } else {
+    request->send(400);
+  }
+});
   
 server.on("/updateSettings", HTTP_POST, [](AsyncWebServerRequest *request) {
     if(request->hasParam("doorInterval", true) && 
@@ -177,15 +189,5 @@ server.begin();
 
 }
 void loop() {
-  
-  unsigned long currentMillis = millis();
-  
-  radio.startListening();                                                 // On commence par arrêter le mode envoi, pour pouvoir réceptionner des données
-  if(radio.available()) {                                                 // On regarde si une donnée a été reçue
-    while (radio.available()) {                                           // Si une donné est en attente de lecture, on va la lire
-      radio.read(&data, sizeof(data));  // Lecture des données reçues, une par une
-    }
-     delay(5);
-  } 
 
 }  

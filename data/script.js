@@ -1,3 +1,17 @@
+document.addEventListener("DOMContentLoaded", function() {
+    function updateClock() {
+        fetch('/time')
+            .then(response => response.text())
+            .then(timeString => {
+                document.getElementById("clock").textContent = timeString;
+            })
+            .catch(error => console.error('Error fetching time:', error));
+    }
+
+    updateClock(); // Initial call to display clock immediately
+    setInterval(updateClock, 60000); // Update the clock every minute
+});
+
 function DoorClose() 
 {
     var xhttp = new XMLHttpRequest();
@@ -7,7 +21,7 @@ function DoorClose()
 
 function DoorOpen()
 {
-    var xhttp = new XMLHttpRequest();
+    var xhttp = new XMLHttpRequest(); 
     xhttp.open("GET", "open", true);
     xhttp.send();
 }

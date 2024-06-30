@@ -4,8 +4,12 @@
 <head>
     <title>My Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" charset="UTF-8" />
+    
     <link rel="stylesheet" type="text/css" href="w3.css">
+    
+    <script type="text/javascript" src="jquery-3.6.3.min.js"></script>
     <script type="text/javascript" src="script.js" defer></script>
+    
     <style>
         body {
             background-color: #25292e; 
@@ -31,10 +35,22 @@
         .control-panel button {
             margin-bottom: 10px;
         }
+
+        #clock {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 18px;
+            font-family: Arial, sans-serif;
+        }
+
     </style>
 </head>
 
 <body class="w3-animate-opacity">
+
+    <div id="clock"></div>
 
     <div class="w3-card w3-blue w3-padding-small w3-center">
         <h1>My chicken coop</h1>
