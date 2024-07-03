@@ -12,7 +12,7 @@
 #include <LittleFS.h> 
 
 #include <ESPAsyncWiFiManager.h>   // Permet de configurer le Wifi via un portail d'accès  https://github.com/tzapu/WiFiManager
-#include <NTPClient.h>             // Client NTP pour récupérer l'heure d'internet
+
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP);
@@ -34,17 +34,15 @@ const byte adresses[][6] = {tunnel1, tunnel2};    // Tableau des adresses de tun
 AsyncWebServer server(80);
 DNSServer dns;
 
-bool porteOuverte = true;
-uint8_t amountFood = 0;
-uint8_t doorInterval = 60;
-uint8_t feedInterval = 6;
-uint8_t foodQuantity = 1;
+bool doorOpen = true;
+
 
 struct Settings {
   uint8_t doorInterval;
   uint8_t feedInterval;
   uint8_t foodQuantity;
   uint16_t photoresistorThreshold;
+  uint8_t timeToEat;
 };
 
 
@@ -125,14 +123,6 @@ server.on("/jquery-3.6.3.min.js", HTTP_GET, [](AsyncWebServerRequest *request)
   });
 
 
-server.on("/time", HTTP_GET, [](AsyncWebServerRequest *request) {
-    timeClient.update();
-    String formattedTime = timeClient.getFormattedTime();
-    // Extract hours and minutes
-    String hoursMinutes = formattedTime.substring(0, 5); // HH:MM
-    request->send(200, "text/plain", hoursMinutes);
-});
-
 server.on("/open", HTTP_GET, [](AsyncWebServerRequest *request) {
   const char command = 'O';  // 'O' pour Open (Ouvrir)
   radio.stopListening();
@@ -149,22 +139,24 @@ server.on("/close", HTTP_GET, [](AsyncWebServerRequest *request) {
 
 server.on("/ReaddoorInterval", HTTP_GET, [](AsyncWebServerRequest *request)
   {
-  String etatPorte = (porteOuverte) ? "open" : "close";            //lit bool porte ouverte et convertie en string
+  String etatPorte = (doorOpen) ? "open" : "close";            //lit bool porte ouverte et convertie en string
   request->send(200, "text/plain", etatPorte);            // Demande au serveur ouvre la porte
   });
 
   
 server.on("/updateSettings", HTTP_POST, [](AsyncWebServerRequest *request) {
-    if(request->hasParam("doorInterval", true) && 
-         request->hasParam("feedInterval", true) && 
-         request->hasParam("foodQuantity", true) &&
-         request->hasParam("photoresistorThreshold", true)) {
+    if (request->hasParam("doorInterval", true) && 
+      request->hasParam("feedInterval", true) && 
+      request->hasParam("foodQuantity", true) &&
+      request->hasParam("photoresistorThreshold", true) &&
+      request->hasParam("timeToEat", true)) {
       
       Settings settings;
       settings.doorInterval = request->getParam("doorInterval", true)->value().toInt();
       settings.feedInterval = request->getParam("feedInterval", true)->value().toInt();
       settings.foodQuantity = request->getParam("foodQuantity", true)->value().toInt();
       settings.photoresistorThreshold = request->getParam("photoresistorThreshold", true)->value().toInt();
+      settings.timeToEat = request->getParam("timeToEat", true)->value().toInt();
 
 
       radio.stopListening();
@@ -180,5 +172,18 @@ server.begin();
 
 }
 void loop() {
-
+  if (radio.available()) {
+    char status[20];
+    radio.read(&status, sizeof(status));
+    if (strcmp(status, "OPEN") == 0) {
+      doorOpen = true;                      //creer code pour compter temps depuis dernière ouverture ou fermeture de la porte
+    } else if (strcmp(status, "CLOSED") == 0) {
+      doorOpen = false;
+    } else if (strcmp(status, "EAT") == 0) {
+      //faire code pour afficher temps depuis dernière distribution
+    }
+    // Gérer les erreurs si nécessaire
+    Serial.print("Door status received: ");
+    Serial.println(status);
+  }
 }  
