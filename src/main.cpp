@@ -15,7 +15,8 @@
 
 
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP);
+
+unsigned long timeSinceLastEat();
 
 //----------------------------------------------------------------------------------------------------------------radio
 #define pinCE   4           // On associe la broche "CE" du NRF24L01 à la sortie digitale D7 de l'arduino
@@ -35,7 +36,8 @@ AsyncWebServer server(80);
 DNSServer dns;
 
 bool doorOpen = true;
-
+String doorStatus = "close";
+unsigned long lastEatTime = 0;
 
 struct Settings {
   uint8_t doorInterval;
@@ -44,12 +46,13 @@ struct Settings {
   uint16_t photoresistorThreshold;
   uint8_t timeToEat;
 };
+Settings settings;
 
 
 void setup() {
+  settings.doorInterval = 2;
   Serial.begin(115200);
 
-  timeClient.begin();
 
   delay(3000);
 
@@ -137,12 +140,23 @@ server.on("/close", HTTP_GET, [](AsyncWebServerRequest *request) {
   request->send(204);
 });
 
-server.on("/ReaddoorInterval", HTTP_GET, [](AsyncWebServerRequest *request)
+server.on("/ReadDoorState", HTTP_GET, [](AsyncWebServerRequest *request)
   {
-  String etatPorte = (doorOpen) ? "open" : "close";            //lit bool porte ouverte et convertie en string
-  request->send(200, "text/plain", etatPorte);            // Demande au serveur ouvre la porte
+  request->send(200, "text/plain", doorStatus);          
   });
 
+server.on("/ReadTimeSinceLastEat", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+    unsigned long elapsedTime = timeSinceLastEat();
+    String elapsedTimeStr = String(elapsedTime / 60000); // Convertir en minutes et en chaîne de caractères
+    request->send(200, "text/plain", elapsedTimeStr);
+    });
+
+server.on("/ReadDoorInterval", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+    String doorIntervalStr = String(settings.doorInterval);
+    request->send(200, "text/plain", doorIntervalStr);
+    });
   
 server.on("/updateSettings", HTTP_POST, [](AsyncWebServerRequest *request) {
     if (request->hasParam("doorInterval", true) && 
@@ -175,15 +189,30 @@ void loop() {
   if (radio.available()) {
     char status[20];
     radio.read(&status, sizeof(status));
+    
     if (strcmp(status, "OPEN") == 0) {
-      doorOpen = true;                      //creer code pour compter temps depuis dernière ouverture ou fermeture de la porte
+        doorOpen = true;
+        doorStatus = "open";
     } else if (strcmp(status, "CLOSED") == 0) {
-      doorOpen = false;
+        doorOpen = false;
+        doorStatus = "close";
+    } else if (strcmp(status, "ERROR_OPEN") == 0) {
+        doorOpen = false;
+        doorStatus = "error_open";
+    } else if (strcmp(status, "ERROR_CLOSE") == 0) {
+        doorOpen = false;
+        doorStatus = "error_close";
     } else if (strcmp(status, "EAT") == 0) {
-      //faire code pour afficher temps depuis dernière distribution
+      lastEatTime = millis();
     }
     // Gérer les erreurs si nécessaire
     Serial.print("Door status received: ");
     Serial.println(status);
   }
 }  
+
+
+unsigned long timeSinceLastEat() {
+  // Retourne le temps écoulé en millisecondes depuis le dernier "EAT"
+  return millis() - lastEatTime;
+}
